@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tiny Homes WA — Supplier-backed 3D Configurator</title>
+
+  <!-- 3D model viewer -->
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <!-- PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root{
+      --brand:#2c7a7b;
+      --brandDeep:#103a3b;
+      --navy:#001F3F;
+      --gold:#FFC72C;
+      --text:#222;
+      --bg:#f7f9f9;
+      --card:#fff;
+      --border:#ddd;
+      --muted:#666;
+      --success:#1b7f5e;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    header{
+      background:#0f1f1f;
+      color:#fff;
+      padding:26px 18px;
+      text-align:center;
+      background-image:linear-gradient(to bottom, rgba(44,122,123,0.25), rgba(0,31,63,0.7));
+    }
+    header .badge{
+      display:inline-block;
+      background:var(--brandDeep);
+      color:#9be2e3;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      letter-spacing:.4px;
+      margin-bottom:6px;
+    }
+    header h1{
+      margin:4px 0 4px;
+      font-size:2.1em;
+    }
+    header p{
+      margin:0;
+      opacity:.95;
+    }
+    .badge-line{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:center;
+      margin-top:10px;
+    }
+    .kpi{
+      background:#e7f3f2;
+      color:#0e4c4d;
+      border:1px solid #cfe7e6;
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:12px;
+    }
+    .wrap{
+      max-width:1180px;
+      margin:0 auto;
+      padding:20px;
+    }
+    .hero{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:12px;
+      overflow:hidden;
+      box-shadow:0 2px 6px rgba(0,0,0,.06);
+      margin-bottom:18px;
+    }
+    .hero img{
+      width:100%;
+      display:block;
+      max-height:420px;
+      object-fit:cover;
+    }
+    .hero .caption{
+      padding:10px 14px;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .tabs{
+      display:flex;
+      gap:8px;
+      margin:12px 0 18px;
+      flex-wrap:wrap;
+    }
+    .tabs button{
+      border:1px solid var(--border);
+      background:#fff;
+      padding:10px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:14px;
+    }
+    .tabs button.active{
+      background:var(--brand);
+      color:#fff;
+      border-color:var(--brand);
+    }
+    .layout{
+      display:grid;
+      grid-template-columns:1.1fr .9fr;
+      gap:20px;
+    }
+    @media (max-width:980px){
+      .layout{grid-template-columns:1fr}
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:10px;
+      box-shadow:0 2px 6px rgba(0,0,0,.06);
+      padding:14px;
+    }
+    .viewer-stack img,
+    .viewer-stack video,
+    .viewer-stack model-viewer{
+      width:100%;
+      border-radius:8px;
+      margin-bottom:12px;
+    }
+    model-viewer{
+      height:360px;
+      background:#eee;
+    }
+    .controls h3{
+      margin:6px 0 10px;
+      color:var(--brand);
+    }
+    .group{margin-bottom:12px}
+    .group h4{
+      margin:0 0 8px;
+      color:var(--text);
+      font-size:14px;
+    }
+    select{
+      width:100%;
+      padding:10px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      font-size:14px;
+    }
+    .toggle{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin:6px 0;
+      font-size:13px;
+    }
+    .swatches{
+      display:grid;
+      grid-template-columns:repeat(6,1fr);
+      gap:8px;
+    }
+    .swatches button{
+      height:34px;
+      border-radius:6px;
+      padding:0;
+      border:2px solid #fff;
+      box-shadow:0 1px 2px rgba(0,0,0,.06);
+      cursor:pointer;
+    }
+    .swatches button.active{
+      outline:2px solid var(--brand);
+    }
+    .summary .lines{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:6px 18px;
+    }
+    .summary .price-line{
+      display:flex;
+      justify-content:space-between;
+      margin:6px 0;
+      font-size:14px;
+    }
+    .summary .total{
+      font-weight:bold;
+      font-size:20px;
+      color:var(--brand);
+      border-top:1px solid var(--border);
+      padding-top:10px;
+      margin-top:8px;
+    }
+    .summary .note{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:6px;
+    }
+    .actions{
+      margin-top:12px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .btn{
+      background:var(--brand);
+      color:#fff;
+      border:none;
+      padding:10px 14px;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:13px;
+    }
+    .btn.secondary{
+      background:#fff;
+      color:var(--brand);
+      border:1px solid var(--brand);
+    }
+    .btn.gold{
+      background:var(--gold);
+      color:#000;
+    }
+    .name-input{
+      padding:9px 10px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      font-size:13px;
+      min-width:180px;
+    }
+    footer{
+      text-align:center;
+      color:#eee;
+      background:#222;
+      padding:18px 16px;
+      margin-top:20px;
+    }
+    footer strong{color:var(--brand)}
+  </style>
+</head>
+<body>
+<header>
+  <div class="badge">Supplier-backed • Transparent • Charity-built</div>
+  <h1>Tiny Homes WA — 3D Configurator</h1>
+  <p>Customize deliverable options, see visuals and pricing live, and download your build summary.</p>
+  <div class="badge-line">
+    <span class="kpi">10% profits → WA projects</span>
+    <span class="kpi">Supplier-aligned options only</span>
+    <span class="kpi">Live pricing + PDF export</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <img src="https://static.wixstatic.com/media/9526fd_5f26ba7c97dc41f39e52f4e79ae214e6~mv2.png" alt="Porch render — Tiny Homes WA"/>
+    <div class="caption">Supplier-rendered porch model. Visuals and pricing below are aligned to deliverable, priced options only.</div>
+  </div>
+
+  <div class="tabs" id="modelTabs"></div>
+
+  <div class="layout">
+    <div class="card">
+      <div class="viewer-stack">
+        <img id="renderImg" src="" alt="Tiny Home Render (Porch)"/>
+        <video id="renderVideo" controls autoplay loop muted playsinline>
+          <source id="renderVideoSrc" src="" type="video/mp4">
+        </video>
+        <model-viewer id="viewer"
+          src=""
+          poster=""
+          alt="Tiny Home 3D"
+          camera-controls
+          auto-rotate
+          ar
+          tone-mapping="neutral"
+          shadow-intensity="1"
+          exposure="0.9">
+        </model-viewer>
+      </div>
+    </div>
+
+    <div class="card controls">
+      <h3>Customize your home</h3>
+
+      <div class="group">
+        <h4>Roof type</h4>
+        <select id="roofSelect"></select>
+      </div>
+
+      <div class="group">
+        <h4>Exterior color</h4>
+        <div class="swatches" id="colorSwatches"></div>
+      </div>
+
+      <div class="group">
+        <h4>Exterior texture</h4>
+        <select id="textureSelect"></select>
+      </div>
+
+      <div class="group">
+        <h4>Kitchen layout</h4>
+        <select id="kitchenSelect"></select>
+      </div>
+
+      <div class="group">
+        <h4>Bathroom</h4>
+        <select id="bathroomSelect"></select>
+      </div>
+
+      <div class="group">
+        <h4>Flooring</h4>
+        <select id="floorSelect"></select>
+      </div>
+
+      <div class="group">
+        <h4>Interior palette</h4>
+        <select id="interiorSelect"></select>
+      </div>
+
+      <div class="group">
+        <h4>Add-ons</h4>
+        <label class="toggle"><input type="checkbox" id="porchToggle"> Porch (2×6m)</label>
+        <label class="toggle"><input type="checkbox" id="deckToggle"> Deck extension</label>
+        <label class="toggle"><input type="checkbox" id="solarPrepToggle"> Solar prep</label>
+        <label class="toggle"><input type="checkbox" id="fullSolarToggle"> Full solar system</label>
+        <label class="toggle"><input type="checkbox" id="waterToggle"> Water‑saving pack</label>
+        <label class="toggle"><input type="checkbox" id="offgridToggle"> Off‑grid pack</label>
+        <label class="toggle"><input type="checkbox" id="secondFloorToggle"> Second floor</label>
+        <label class="toggle"><input type="checkbox" id="metalPanelsToggle"> Decorative metal panels</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card summary">
+    <div class="lines">
+      <div class="price-line"><span>Base price</span><span id="basePrice">AUD $0</span></div>
+      <div class="price-line"><span>Roof</span><span id="roofPrice">AUD $0</span></div>
+      <div class="price-line"><span>Exterior</span><span id="exteriorPrice">AUD $0</span></div>
+      <div class="price-line"><span>Kitchen</span><span id="kitchenPrice">AUD $0</span></div>
+      <div class="price-line"><span>Bathroom</span><span id="bathroomPrice">AUD $0</span></div>
+      <div class="price-line"><span>Flooring</span><span id="floorPrice">AUD $0</span></div>
+      <div class="price-line"><span>Interior</span><span id="interiorPrice">AUD $0</span></div>
+      <div class="price-line"><span>Porch</span><span id="porchPrice">AUD $0</span></div>
+      <div class="price-line"><span>Deck</span><span id="deckPrice">AUD $0</span></div>
+      <div class="price-line"><span>Solar prep</span><span id="solarPrepPrice">AUD $0</span></div>
+      <div class="price-line"><span>Full solar</span><span id="fullSolarPrice">AUD $0</span></div>
+      <div class="price-line"><span>Water‑saving</span><span id="waterPrice">AUD $0</span></div>
+      <div class="price-line"><span>Off‑grid</span><span id="offgridPrice">AUD $0</span></div>
+      <div class="price-line"><span>Second floor</span><span id="secondFloorPrice">AUD $0</span></div>
+      <div class="price-line"><span>Metal panels</span><span id="metalPanelsPrice">AUD $0</span></div>
+    </div>
+
+    <div class="total"><span>Total</span> <span id="totalPrice">AUD $0</span></div>
+    <div class="note">10% of profits from every home go directly to WA community projects. Only supplier-backed, deliverable options are shown.</div>
+
+    <div class="actions">
+      <input type="text" id="nameInput" class="name-input" placeholder="Your name (for save/send)"/>
+      <button class="btn gold" id="pdfBtn">Download My Build (PDF)</button>
+      <button class="btn secondary" id="copyQuoteBtn">Copy Quote</button>
+      <button class="btn secondary" id="sendQuoteBtn">Send Quote to Site</button>
+      <button class="btn secondary" id="savePlanBtn">Save Plan</button>
+      <button class="btn" id="resetBtn">Reset</button>
+      <button class="btn secondary" id="frontViewBtn">Front View</button>
+      <button class="btn secondary" id="interiorViewBtn">Interior View</button>
+      <button class="btn secondary" id="roofViewBtn">Roof View</button>
+      <button class="btn secondary" id="autoRotateBtn">Auto‑Rotate</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>© 2025 Tiny Homes WA. All rights reserved.</p>
+  <p><strong>10% of profits</strong> from every home go directly to WA community projects.</p>
+</footer>
+
+<script>
+  // =========================
+  // DATA — Supplier-backed
+  // =========================
+  const DATA = {
+    renderPorchImg: "https://static.wixstatic.com/media/9526fd_5f26ba7c97dc41f39e52f4e79ae214e6~mv2.png",
+    videos: {
+      "20ft": "https://video.wixstatic.com/video/9526fd_db221f37a28b41658473e5aa0a749679/720p/mp4/file.mp4",
+      "40ft": "https://video.wixstatic.com/video/9526fd_f4003d03e9c644f3bf78b0b1f6f54699/720p/mp4/file.mp4"
+    },
+    glbs: {
+      "20ft": "",
+      "40ft": ""
+    },
+    models: [
+      { id:"20ft", label:"20FT" },
+      { id:"40ft", label:"40FT" }
+    ],
+    prices: {
+      "20ft":108585,
+      "40ft":128150
+    },
+    roof: {
+      flat:    { label:"Flat",    price:0 },
+      sloping: { label:"Sloping", price:17000 }
+    },
+    exteriorColors: [
+      { id:"white",    label:"White",          hex:"#f4f4f4", texture:"smooth",  price:0 },
+      { id:"sand",     label:"Sand",           hex:"#d8c7a3", texture:"smooth",  price:0 },
+      { id:"clay",     label:"Clay",           hex:"#b99066", texture:"smooth",  price:0 },
+      { id:"forest",   label:"Forest",         hex:"#2f4f4f", texture:"timber",  price:0 },
+      { id:"charcoal", label:"Charcoal",       hex:"#333333", texture:"steel",   price:0 },
+      { id:"ocean",    label:"Ocean (Teal)",   hex:"#2c7a7b", texture:"steel",   price:0 }
+    ],
+    textures: {
+      smooth:       { label:"Smooth cladding",  price:0 },
+      timber:       { label:"Timber cladding",  price:0 },
+      steel:        { label:"Steel panel",      price:0 },
+      weatherboard: { label:"Weatherboard",     price:0 }
+    },
+    kitchens: {
+      straight:{ label:"Straight",   price:0 },
+      lshape:  { label:"L‑shaped",   price:2500 },
+      u:       { label:"U‑shaped",   price:3500 },
+      galley:  { label:"Galley",     price:4000 }
+    },
+    bathrooms: {
+      standard:{ label:"Standard",           price:0 },
+      bathtub: { label:"Customized bathtub", price:1800 }
+    },
+    flooring: {
+      pvc_palms062029:      { label:"PVC — Palm wood 062029",    price:0 },
+      pvc_gray062028:       { label:"PVC — Grey wood 062028",    price:0 },
+      pvc_whitespruce06202: { label:"PVC — White spruce 06202",  price:0 },
+      pvc_maple062027:      { label:"PVC — Maple 062027",        price:0 },
+      pvc_camphor062030:    { label:"PVC — Camphor 062030",      price:0 },
+      spc_9012:             { label:"SPC/LVT — 9012",            price:450 },
+      spc_9007:             { label:"SPC/LVT — 9007",            price:450 },
+      spc_7007:             { label:"SPC/LVT — 7007",            price:450 },
+      spc_9005:             { label:"SPC/LVT — 9005",            price:450 }
+    },
+    interiors: {
+      light:    { label:"Light",            price:0 },
+      warm:     { label:"Warm",             price:650 },
+      charcoal: { label:"Charcoal",         price:650 },
+      premium:  { label:"Premium Designer", price:1200 }
+    },
+    addOns: {
+      porch:        { label:"Porch (2×6m)",            price:9000 },
+      deck:         { label:"Deck extension",          price:7500 },
+      solarPrep:    { label:"Solar prep",              price:2200 },
+      fullSolar:    { label:"Full solar system",       price:8500 },
+      water:        { label:"Water‑saving pack",       price:1250 },
+      offgrid:      { label:"Off‑grid pack",           price:12000 },
+      secondFloor:  { label:"Second floor",            price:25000 },
+      metalPanels:  { label:"Decorative metal panels", price:3800 }
+    }
+  };
+
+  // =================
+  // STATE
+  // =================
+  const state = {
+    modelId:"40ft",
+    roof:"flat",
+    exteriorColor:"white",
+    texture:"smooth",
+    kitchen:"straight",
+    bathroom:"standard",
+    flooring:"pvc_palms062029",
+    interior:"light",
+    addOns:{
+      porch:false,
+      deck:false,
+      solarPrep:false,
+      fullSolar:false,
+      water:false,
+      offgrid:false,
+      secondFloor:false,
+      metalPanels:false
+    }
+  };
+
+  // =================
+  // ELEMENTS
+  // =================
+  const modelTabs = document.getElementById("modelTabs");
+  const renderImg = document.getElementById("renderImg");
+  const renderVideo = document.getElementById("renderVideo");
+  const renderVideoSrc = document.getElementById("renderVideoSrc");
+  const viewer = document.getElementById("viewer");
+
+  const roofSelect = document.getElementById("roofSelect");
+  const textureSelect = document.getElementById("textureSelect");
+  const kitchenSelect = document.getElementById("kitchenSelect");
+  const bathroomSelect = document.getElementById("bathroomSelect");
+  const floorSelect = document.getElementById("floorSelect");
+  const interiorSelect = document.getElementById("interiorSelect");
+  const colorSwatches = document.getElementById("colorSwatches");
+
+  const porchToggle = document.getElementById("porchToggle");
+  const deckToggle = document.getElementById("deckToggle");
+  const solarPrepToggle = document.getElementById("solarPrepToggle");
+  const fullSolarToggle = document.getElementById("fullSolarToggle");
+  const waterToggle = document.getElementById("waterToggle");
+  const offgridToggle = document.getElementById("offgridToggle");
+  const secondFloorToggle = document.getElementById("secondFloorToggle");
+  const metalPanelsToggle = document.getElementById("metalPanelsToggle");
+
+  const basePriceEl = document.getElementById("basePrice");
+  const roofPriceEl = document.getElementById("roofPrice");
+  const exteriorPriceEl = document.getElementById("exteriorPrice");
+  const kitchenPriceEl = document.getElementById("kitchenPrice");
+  const bathroomPriceEl = document.getElementById("bathroomPrice");
+  const floorPriceEl = document.getElementById("floorPrice");
+  const interiorPriceEl = document.getElementById("interiorPrice");
+  const porchPriceEl = document.getElementById("porchPrice");
+  const deckPriceEl = document.getElementById("deckPrice");
+  const solarPrepPriceEl = document.getElementById("solarPrepPrice");
+  const fullSolarPriceEl = document.getElementById("fullSolarPrice");
+  const waterPriceEl = document.getElementById("waterPrice");
+  const offgridPriceEl = document.getElementById("offgridPrice");
+  const secondFloorPriceEl = document.getElementById("secondFloorPrice");
+  const metalPanelsPriceEl = document.getElementById("metalPanelsPrice");
+  const totalPriceEl = document.getElementById("totalPrice");
+
+  const nameInput = document.getElementById("nameInput");
+
+  const pdfBtn = document.getElementById("pdfBtn");
+  const copyQuoteBtn = document.getElementById("copyQuoteBtn");
+  const sendQuoteBtn = document.getElementById("sendQuoteBtn");
+  const savePlanBtn = document.getElementById("savePlanBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const frontViewBtn = document.getElementById("frontViewBtn");
+  const interiorViewBtn = document.getElementById("interiorViewBtn");
+  const roofViewBtn = document.getElementById("roofViewBtn");
+  const autoRotateBtn = document.getElementById("autoRotateBtn");
+
+  // =================
+  // HELPERS
+  // =================
+  const fmt = n => "AUD $" + n.toLocaleString("en-AU");
+
+  function renderTabs(){
+    modelTabs.innerHTML = "";
+    DATA.models.forEach(m=>{
+      const btn = document.createElement("button");
+      btn.textContent = m.label;
+      btn.className = (m.id===state.modelId) ? "active" : "";
+      btn.onclick = ()=>{
+        state.modelId = m.id;
+        syncVisuals();
+        updatePricing();
+        renderTabs();
+      };
+      modelTabs.appendChild(btn);
+    });
+  }
+
+  function renderSelect(selectEl, itemsObj){
+    selectEl.innerHTML = "";
+    Object.entries(itemsObj).forEach(([key,val])=>{
+      const opt = document.createElement("option");
+      opt.value = key;
+      opt.textContent = val.label + (val.price ? ` (+${fmt(val.price)})` : " (included)");
+      selectEl.appendChild(opt);
+    });
+  }
+
+  function renderFlooring(selectEl, itemsObj){
+    selectEl.innerHTML = "";
+    Object.entries(itemsObj).forEach(([key,val])=>{
+      const opt = document.createElement("option");
+      opt.value = key;
+      opt.textContent = val.label + (val.price ? ` (+${fmt(val.price)})` : " (included)");
+      selectEl.appendChild(opt);
+    });
+  }
+
+  function renderColorSwatches(){
+    colorSwatches.innerHTML = "";
+    DATA.exteriorColors.forEach(c=>{
+      const b = document.createElement("button");
+      b.style.background = c.hex;
+      if(c.id===state.exteriorColor) b.classList.add("active");
+      b.title = c.label;
+      b.onclick = ()=>{
+        state.exteriorColor = c.id;
+        state.texture = c.texture;
+        textureSelect.value = state.texture;
+        applyExteriorVisualTint(c.hex);
+        updatePricing();
+        renderColorSwatches();
+      };
+      colorSwatches.appendChild(b);
+    });
+  }
+
+  function applyExteriorVisualTint(hex){
+    viewer.style.background = hex;
+    renderImg.style.boxShadow = `0 0 0 4px ${hex}33`;
+  }
+
+  function syncVisuals(){
+    renderImg.src = DATA.renderPorchImg;
+    renderImg.alt = `${state.modelId.toUpperCase()} Tiny Home Render (Porch)`;
+
+    const vid = DATA.videos[state.modelId] || "";
+    renderVideoSrc.src = vid;
+    renderVideo.load();
+
+    viewer.poster = DATA.renderPorchImg;
+    const glb = DATA.glbs[state.modelId];
+    viewer.src = glb && glb.trim().length ? glb : "";
+  }
+
+  // =================
+  // PRICING
+  // =================
+  function calcPricing(){
+    const base = DATA.prices[state.modelId] || 0;
+
+    const roof = DATA.roof[state.roof]?.price || 0;
+    const colorObj = DATA.exteriorColors.find(c=>c.id===state.exteriorColor);
+    const colorCost = colorObj?.price || 0;
+    const texCost = DATA.textures[state.texture]?.price || 0;
+
+    const kitchen = DATA.kitchens[state.kitchen]?.price || 0;
+    const bathroom = DATA.bathrooms[state.bathroom]?.price || 0;
+    const floor = DATA.flooring[state.flooring]?.price || 0;
+    const interior = DATA.interiors[state.interior]?.price || 0;
+
+    const porch = state.addOns.porch ? DATA.addOns.porch.price : 0;
+    const deck = state.addOns.deck ? DATA.addOns.deck.price : 0;
+    const solarPrep = state.addOns.solarPrep ? DATA.addOns.solarPrep.price : 0;
+    const fullSolar = state.addOns.fullSolar ? DATA.addOns.fullSolar.price : 0;
+    const water = state.addOns.water ? DATA.addOns.water.price : 0;
+    const offgrid = state.addOns.offgrid ? DATA.addOns.offgrid.price : 0;
+    const secondFloor = state.addOns.secondFloor ? DATA.addOns.secondFloor.price : 0;
+    const metalPanels = state.addOns.metalPanels ? DATA.addOns.metalPanels.price : 0;
+
+    const exterior = colorCost + texCost;
+
+    const total = base + roof + exterior + kitchen + bathroom + floor + interior +
+      porch + deck + solarPrep + fullSolar + water + offgrid + secondFloor + metalPanels;
+
+    return {
+      base, roof, exterior, kitchen, bathroom, floor, interior,
+      porch, deck, solarPrep, fullSolar, water, offgrid, secondFloor, metalPanels, total
+    };
+  }
+
+  function updatePricing(){
+    const p = calcPricing();
+    basePriceEl.textContent = fmt(p.base);
+    roofPriceEl.textContent = fmt(p.roof);
+    exteriorPriceEl.textContent = fmt(p.exterior);
+    kitchenPriceEl.textContent = fmt(p.kitchen);
+    bathroomPriceEl.textContent = fmt(p.bathroom);
+    floorPriceEl.textContent = fmt(p.floor);
+    interiorPriceEl.textContent = fmt(p.interior);
+    porchPriceEl.textContent = fmt(p.porch);
+    deckPriceEl.textContent = fmt(p.deck);
+    solarPrepPriceEl.textContent = fmt(p.solarPrep);
+    fullSolarPriceEl.textContent = fmt(p.fullSolar);
+    waterPriceEl.textContent = fmt(p.water);
+    offgridPriceEl.textContent = fmt(p.offgrid);
+    secondFloorPriceEl.textContent = fmt(p.secondFloor);
+    metalPanelsPriceEl.textContent = fmt(p.metalPanels);
+    totalPriceEl.textContent = fmt(p.total);
+  }
+
+  // =================
+  // EXPORT HELPERS
+  // =================
+  function getSelectionsSummary(){
+    const modelLabel = DATA.models.find(m=>m.id===state.modelId)?.label || state.modelId;
+    const colorLabel = DATA.exteriorColors.find(c=>c.id===state.exteriorColor)?.label || state.exteriorColor;
+    const addOnsList = Object.entries(state.addOns)
+      .filter(([k,v])=>v)
+      .map(([k])=>DATA.addOns[k].label);
+
+    return [
+      `Model: ${modelLabel}`,
+      `Roof: ${DATA.roof[state.roof].label}`,
+      `Exterior color: ${colorLabel}`,
+      `Texture: ${DATA.textures[state.texture].label}`,
+      `Kitchen: ${DATA.kitchens[state.kitchen].label}`,
+      `Bathroom: ${DATA.bathrooms[state.bathroom].label}`,
+      `Flooring: ${DATA.flooring[state.flooring].label}`,
+      `Interior palette: ${DATA.interiors[state.interior].label}`,
+      `Add-ons: ${addOnsList.length ? addOnsList.join(", ") : "None"}`
+    ].join("\n");
+  }
+
+  function downloadBuild(){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const p = calcPricing();
+    const summary = getSelectionsSummary();
+
+    doc.setFontSize(16);
+    doc.text("Tiny Homes WA — Build & Price Summary", 14, 18);
+    doc.setFontSize(11);
+
+    const lines = [
+      summary,
+      "",
+      `Base: ${fmt(p.base)}`,
+      `Roof: ${fmt(p.roof)}`,
+      `Exterior: ${fmt(p.exterior)}`,
+      `Kitchen: ${fmt(p.kitchen)}`,
+      `Bathroom: ${fmt(p.bathroom)}`,
+      `Flooring: ${fmt(p.floor)}`,
+      `Interior: ${fmt(p.interior)}`,
+      `Porch: ${fmt(p.porch)}`,
+      `Deck: ${fmt(p.deck)}`,
+      `Solar prep: ${fmt(p.solarPrep)}`,
+      `Full solar: ${fmt(p.fullSolar)}`,
+      `Water-saving: ${fmt(p.water)}`,
+      `Off-grid: ${fmt(p.offgrid)}`,
+      `Second floor: ${fmt(p.secondFloor)}`,
+      `Metal panels: ${fmt(p.metalPanels)}`,
+      "",
+      `Total: ${fmt(p.total)}`,
+      "",
+      "Note: 10% of profits from every home go directly to WA community projects.",
+      "Only supplier-backed, deliverable options are shown in this summary."
+    ];
+
+    doc.text(lines, 14, 30);
+    doc.save(`TinyHomesWA_${state.modelId}_Build.pdf`);
+  }
+
+  function copyQuote(){
+    const txt = `${totalPriceEl.textContent}\n\n${getSelectionsSummary()}`;
+    navigator.clipboard.writeText(txt).then(()=> alert("Quote copied to clipboard."));
+  }
+
+  function sendQuoteToSite(){
+    const payload = {
+      type:"modularHomesQuote",
+      timestamp:new Date().toISOString(),
+      name:nameInput.value || "",
+      plan:state.modelId,
+      summary:getSelectionsSummary(),
+      total:totalPriceEl.textContent
+    };
+    window.parent.postMessage(payload, "*");
+    alert("Quote sent to site.");
+  }
+
+  function savePlan(){
+    const name = (nameInput.value || "").trim();
+    if(!name){
+      window.parent.postMessage({ type:"SaveError" }, "*");
+      alert("Please enter your name before saving a plan.");
+      return;
+    }
+    const selectedAddOns = Object.entries(state.addOns)
+      .filter(([k,v])=>v)
+      .map(([k])=>DATA.addOns[k].label);
+
+    const payload = {
+      name,
+      floorPlan: state.modelId,
+      customisations: selectedAddOns,
+      createdAt: new Date().toISOString()
+    };
+
+    window.parent.postMessage({ type:"SavePlan", data:payload }, "*");
+    alert("Plan payload sent. Awaiting backend save.");
+  }
+
+  // =================
+  // RESET
+  // =================
+  function resetSelections(){
+    Object.assign(state, {
+      modelId:"40ft",
+      roof:"flat",
+      exteriorColor:"white",
+      texture:"smooth",
+      kitchen:"straight",
+      bathroom:"standard",
+      flooring:"pvc_palms062029",
+      interior:"light",
+      addOns:{
+        porch:false,
+        deck:false,
+        solarPrep:false,
+        fullSolar:false,
+        water:false,
+        offgrid:false,
+        secondFloor:false,
+        metalPanels:false
+      }
+    });
+    roofSelect.value = state.roof;
+    textureSelect.value = state.texture;
+    kitchenSelect.value = state.kitchen;
+    bathroomSelect.value = state.bathroom;
+    floorSelect.value = state.flooring;
+    interiorSelect.value = state.interior;
+
+    porchToggle.checked = false;
+    deckToggle.checked = false;
+    solarPrepToggle.checked = false;
+    fullSolarToggle.checked = false;
+    waterToggle.checked = false;
+    offgridToggle.checked = false;
+    secondFloorToggle.checked = false;
+    metalPanelsToggle.checked = false;
+
+    renderTabs();
+    renderColorSwatches();
+    syncVisuals();
+    const initialHex = DATA.exteriorColors.find(c=>c.id===state.exteriorColor)?.hex || "#eee";
+    applyExteriorVisualTint(initialHex);
+    updatePricing();
+  }
+
+  // =================
+  // EVENTS
+  // =================
+  roofSelect.onchange = e => { state.roof = e.target.value; updatePricing(); };
+  textureSelect.onchange = e => { state.texture = e.target.value; updatePricing(); };
+  kitchenSelect.onchange = e => { state.kitchen = e.target.value; updatePricing(); };
+  bathroomSelect.onchange = e => { state.bathroom = e.target.value; updatePricing(); };
+  floorSelect.onchange = e => { state.flooring = e.target.value; updatePricing(); };
+  interiorSelect.onchange = e => { state.interior = e.target.value; updatePricing(); };
+
+  porchToggle.onchange = e => { state.addOns.porch = e.target.checked; updatePricing(); };
+  deckToggle.onchange = e => { state.addOns.deck = e.target.checked; updatePricing(); };
+  solarPrepToggle.onchange = e => { state.addOns.solarPrep = e.target.checked; updatePricing(); };
+  fullSolarToggle.onchange = e => { state.addOns.fullSolar = e.target.checked; updatePricing(); };
+  waterToggle.onchange = e => { state.addOns.water = e.target.checked; updatePricing(); };
+  offgridToggle.onchange = e => { state.addOns.offgrid = e.target.checked; updatePricing(); };
+  secondFloorToggle.onchange = e => { state.addOns.secondFloor = e.target.checked; updatePricing(); };
+  metalPanelsToggle.onchange = e => { state.addOns.metalPanels = e.target.checked; updatePricing(); };
+
+  pdfBtn.onclick = downloadBuild;
+  copyQuoteBtn.onclick = copyQuote;
+  sendQuoteBtn.onclick = sendQuoteToSite;
+  savePlanBtn.onclick = savePlan;
+  resetBtn.onclick = resetSelections;
+
+  frontViewBtn.onclick = ()=>{
+    viewer.cameraOrbit = "0deg 90deg 3m";
+    viewer.autoRotate = false;
+  };
+  interiorViewBtn.onclick = ()=>{
+    viewer.cameraOrbit = "180deg 0deg 2m";
+    viewer.autoRotate = false;
+  };
+  roofViewBtn.onclick = ()=>{
+    viewer.cameraOrbit = "0deg 30deg 5m";
+    viewer.autoRotate = false;
+  };
+  autoRotateBtn.onclick = ()=>{
+    viewer.autoRotate = true;
+  };
+
+  // =================
+  // RENDER CONTROLS
+  // =================
+  function renderControls(){
+    renderSelect(roofSelect, DATA.roof);
+    roofSelect.value = state.roof;
+
+    renderSelect(textureSelect, DATA.textures);
+    textureSelect.value = state.texture;
+
+    renderSelect(kitchenSelect, DATA.kitchens);
+    kitchenSelect.value = state.kitchen;
+
+    renderSelect(bathroomSelect, DATA.bathrooms);
+    bathroomSelect.value = state.bathroom;
+
+    renderFlooring(floorSelect, DATA.flooring);
+    floorSelect.value = state.flooring;
+
+    renderSelect(interiorSelect, DATA.interiors);
+    interiorSelect.value = state.interior;
+
+    renderColorSwatches();
+  }
+
+  // =================
+  // BOOT
+  // =================
+  function boot(){
+    renderTabs();
+    renderControls();
+    syncVisuals();
+    const initialHex = DATA.exteriorColors.find(c=>c.id===state.exteriorColor)?.hex || "#eee";
+    applyExteriorVisualTint(initialHex);
+    updatePricing();
+  }
+  boot();
+</script>
+</body>
+</html>
